@@ -88,19 +88,52 @@
     <p>A major distinction between the two models lies in their fundamental building blocks. Mamba-YOLO uses custom State Space Model blocks, while YOLOv7 constructs its E-ELAN architecture from combinations of optimized convolutional modules.</p>
 
     <h3>Mamba-YOLO: VSSBlock and XSSBlock</h3>
+    <p>A closer look at the <code>VSSBlock</code> and <code>XSSBlock</code> reveals a complex internal structure designed to efficiently extract both spatial features and long-range dependencies.</p>
     <ul>
-        <li><strong>SS2D Integration:</strong> Both <code>VSSBlock</code> and <code>XSSBlock</code> explicitly instantiate and utilize the <code>SS2D</code> class as their core operation (<code>self.op = SS2D(...)</code>).</li>
-        <li><strong>Configurable Parameters:</strong> These blocks allow granular control over State Space parameters such as state dimensions (<code>ssm_d_state</code>), ratios (<code>ssm_ratio</code>, <code>ssm_rank_ratio</code>), and convolution arguments (<code>ssm_conv</code>).</li>
-        <li><strong>Structure:</strong> The blocks wrap the SS2D operation with standard components like <code>LayerNorm2d</code>, DropPath, and an optional MLP branch (controlled via <code>mlp_ratio</code>) to form a robust feature extraction unit.</li>
+        <li><strong>Initial Projection:</strong> Both blocks start with an initial 1x1 convolution projection.</li>
+        <li><strong>LSBlock (Local Spatial Block):</strong> The input is first processed through an <code>LSBlock</code>, which consists of a 3x3 depthwise convolution, BatchNorm, 1x1 convolution, activation, and another 1x1 convolution with a residual connection. This captures local spatial details.</li>
+        <li><strong>SS2D (State Space 2D):</strong> The core operation. The output of the LSBlock is normalized (LayerNorm2d) and passed into the <code>SS2D</code> module. In the <code>XSSBlock</code>, the SS2D module can be stacked <em>n</em> times sequentially. The result is added back to the main branch via a residual connection (with DropPath).</li>
+        <li><strong>RGBlock (Residual Gating Block - Optional MLP):</strong> If the <code>mlp_ratio</code> is greater than 0, an additional branch is activated. It takes the current features, normalizes them, and passes them through an <code>RGBlock</code>. The RGBlock splits the features, processes one half with a 3x3 depthwise convolution and activation, and then multiplies it element-wise with the other half (gating mechanism). This is also added back via a residual connection.</li>
     </ul>
 
     <div class="mermaid diagram">
         graph TD;
-        A[Input] --> B[Proj Conv + LayerNorm2d];
-        B --> C{SS2D Module};
-        C --> D[DropPath / Optional MLP Branch];
-        D --> E[Output];
-        style C fill:#f9f,stroke:#333,stroke-width:2px;
+        A[Input] --> B(In Proj: 1x1 Conv, BN, SiLU);
+
+        subgraph Main SSM Branch
+            B --> C{LSBlock};
+            C --> D[LayerNorm2d];
+            D --> E{SS2D Module};
+            E --> |DropPath| F((+));
+            B --> F;
+        end
+
+        subgraph Optional MLP Branch
+            F --> G[LayerNorm2d];
+            G --> H{RGBlock};
+            H --> |DropPath| I((+));
+            F --> I;
+        end
+
+        I --> J[Output];
+
+        style C fill:#ddd,stroke:#333
+        style E fill:#f9f,stroke:#333,stroke-width:2px;
+        style H fill:#ddd,stroke:#333
+        style F fill:#ffa,stroke:#333
+        style I fill:#ffa,stroke:#333
+    </div>
+
+    <h4>RGBlock Internal Structure</h4>
+    <div class="mermaid diagram">
+        graph TD;
+        A[Input] --> B(1x1 Conv);
+        B --> |Chunk 0| C(3x3 DWConv + Act);
+        B --> |Chunk 1| D(Identity / Gate);
+        C --> E(( * ));
+        D --> E;
+        E --> F(1x1 Conv);
+        F --> G[Output];
     </div>
 
     <h3>YOLOv7: E-ELAN Architecture</h3>
