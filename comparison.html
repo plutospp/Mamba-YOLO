@@ -26,7 +26,14 @@
             border-radius: 4px;
             font-family: monospace;
         }
+        .diagram {
+            margin-bottom: 40px;
+        }
     </style>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
 </head>
 <body>
 
@@ -44,6 +51,17 @@
         <li><strong>Architectural Paradigm:</strong> Relies on long-range dependency modeling provided by State Space Models, offering a strong alternative to Vision Transformers with potentially lower computational overhead.</li>
     </ul>
 
+    <div class="mermaid diagram">
+        graph TD;
+        A[Input Image] --> B(SimpleStem);
+        B --> C{VSSBlock + VisionClueMerge};
+        C --> D{XSSBlock Neck/PAFPN};
+        D --> E[YOLOv8 Detect Head];
+        E --> F((Output));
+        style C fill:#f9f,stroke:#333,stroke-width:2px;
+        style D fill:#f9f,stroke:#333,stroke-width:2px;
+    </div>
+
     <h3>YOLOv7</h3>
     <p>YOLOv7 is built upon a highly optimized Convolutional Neural Network (CNN) architecture.</p>
     <ul>
@@ -52,6 +70,18 @@
         <li><strong>Detection Head:</strong> Employs an <code>IDetect</code> head with pre-defined anchors (anchor-based, though updated versions introduce anchor-free decoupled heads).</li>
         <li><strong>Architectural Paradigm:</strong> Focuses on CNN-based "bag-of-freebies", re-parameterization, and efficient gradient flow for optimal real-time performance.</li>
     </ul>
+
+    <div class="mermaid diagram">
+        graph TD;
+        A[Input Image] --> B(Conv/Concat/MP);
+        B --> C{E-ELAN Backbone};
+        C --> D{SPPCSPC + RepConv Neck};
+        D --> E[IDetect Head];
+        E --> F((Output));
+        style C fill:#bbf,stroke:#333,stroke-width:2px;
+        style D fill:#bbf,stroke:#333,stroke-width:2px;
+    </div>
+
 
     <h2>2. Training Methodology</h2>
 
@@ -63,6 +93,15 @@
         <li><strong>Training Script:</strong> Relies on a unified <code>mbyolo_train.py</code> that interfaces with the Ultralytics <code>YOLO</code> engine class, abstracting complex training routines into standardized configurations.</li>
     </ul>
 
+    <div class="mermaid diagram">
+        flowchart LR;
+        A(mbyolo_train.py) --> B(Ultralytics Engine);
+        B --> C[Loss: BCE + CIoU + DFL];
+        B --> D[Optimizer: SGD/AdamW];
+        B --> E[Anchor-free Assignment];
+    </div>
+
+
     <h3>YOLOv7</h3>
     <ul>
         <li><strong>Framework Integration:</strong> Uses a custom PyTorch training loop derived originally from YOLOv5/YOLOR.</li>
@@ -70,6 +109,14 @@
         <li><strong>Loss Function:</strong> Employs <code>ComputeLossOTA</code> (Optimal Transport Assignment) for dynamic label assignment, alongside traditional <code>ComputeLoss</code>. This complex label assignment matches anchors to ground truths optimally during training.</li>
         <li><strong>Training Script:</strong> The <code>train.py</code> handles custom loss accumulation, EMA (Exponential Moving Average) updates, multi-scale training, and complex scaling techniques explicitly in the script.</li>
     </ul>
+
+    <div class="mermaid diagram">
+        flowchart LR;
+        A(train.py) --> B(Custom PyTorch Loop);
+        B --> C[Loss: ComputeLossOTA];
+        B --> D[Optimizer: SGD + Parameter Groups];
+        B --> E[Anchor-based Assignment];
+    </div>
 
     <h2>Summary</h2>
     <p>The fundamental difference lies in their core computational blocks. YOLOv7 represents the pinnacle of purely CNN-based, anchor-assigned architecture optimized through re-parameterization and E-ELAN gradient paths. In contrast, Mamba-YOLO explores a completely novel direction using State Space Models (<code>VSSBlock</code>, <code>XSSBlock</code>), capitalizing on the Ultralytics YOLOv8 infrastructure for anchor-free detection and modernized training loops.</p>
