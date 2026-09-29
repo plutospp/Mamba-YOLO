@@ -94,12 +94,34 @@
         <li><strong>Structure:</strong> The blocks wrap the SS2D operation with standard components like <code>LayerNorm2d</code>, DropPath, and an optional MLP branch (controlled via <code>mlp_ratio</code>) to form a robust feature extraction unit.</li>
     </ul>
 
+    <div class="mermaid diagram">
+        graph TD;
+        A[Input] --> B[Proj Conv + LayerNorm2d];
+        B --> C{SS2D Module};
+        C --> D[DropPath / Optional MLP Branch];
+        D --> E[Output];
+        style C fill:#f9f,stroke:#333,stroke-width:2px;
+    </div>
+
     <h3>YOLOv7: E-ELAN Architecture</h3>
     <ul>
         <li><strong>No Single "E-ELAN" Class:</strong> Unlike Mamba-YOLO's explicit <code>VSSBlock</code>, YOLOv7 does not have a monolithic "E-ELAN block" class. Instead, E-ELAN is an architectural design pattern implemented in the configuration file.</li>
         <li><strong>Composition:</strong> E-ELAN is built structurally by composing standard building blocks such as <code>Conv</code> (Convolution), <code>Concat</code> (Concatenation), and <code>MP</code> (Max Pooling). Layers are split, processed through varying numbers of convolutional layers, and then concatenated back together to optimize gradient paths.</li>
         <li><strong>Re-parameterization:</strong> The architecture heavily utilizes the <code>RepConv</code> class in the final layers of the head. <code>RepConv</code> acts as a multi-branch convolution during training but can be merged into a single 3x3 convolution during deployment for faster inference.</li>
     </ul>
+
+    <div class="mermaid diagram">
+        graph TD;
+        A[Input] --> B[Split Features];
+        B --> C[Conv Layers];
+        B --> D[Conv Layers / MP];
+        C --> E{Concat};
+        D --> E;
+        E --> F[RepConv];
+        F --> G[Output];
+        style E fill:#bbf,stroke:#333,stroke-width:2px;
+        style F fill:#bbf,stroke:#333,stroke-width:2px;
+    </div>
 
     <h2>3. Training Methodology</h2>
 
